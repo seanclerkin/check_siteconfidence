@@ -120,7 +120,9 @@ end
 
 api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{username}/password/#{password}/Format/JSON/")["Response"]["ApiKey"]["Value"]
 
-json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BUserJourneys%5BUserJourney%5BId%2CLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CCurrentStatus%2CResultCode%5D%5D%5D%5D/AccountId/MN4A9174/ScriptType/0/Format/JSON/")
+account_id = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Format/JSON")["Response"]["Account"]["AccountId"]
+
+json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BUserJourneys%5BUserJourney%5BId%2CLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CCurrentStatus%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/ScriptType/0/Format/JSON/")
 
 user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
 
