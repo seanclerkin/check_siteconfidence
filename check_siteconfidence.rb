@@ -122,7 +122,7 @@ api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{user
 
 account_id = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Format/JSON")["Response"]["Account"]["AccountId"]
 
-json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
+json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
 
 # Iterate through the different user journeys until we find the label
 user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
@@ -131,7 +131,7 @@ user_journeys.each do |user_journey|
   if label == user_journey["Label"]
    result_code = user_journey["ResultCode"]
    time_taken = user_journey["LastTestDownloadSpeed"]
-   time_ran = user_journey["LastTestGmtTimestamp"]
+   time_ran = user_journey["LastTestLocalTimestamp"]
    break
   end
 end
@@ -143,7 +143,7 @@ pages.each do |page|
   if label == page["Label"]
    result_code = page["ResultCode"]
    time_taken = page["LastTestDownloadSpeed"]
-   time_ran = page["LastTestGmtTimestamp"]
+   time_ran = page["LastTestLocalTimestamp"]
    break
   end
 end
