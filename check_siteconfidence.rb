@@ -162,4 +162,7 @@ case exit_code
   when 2
     puts "CRITICAL: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
     exit exit_code
+  when 3
+    puts "UNKNOWN: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    exit exit_code
 end
