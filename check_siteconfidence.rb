@@ -18,6 +18,8 @@ label = nil
 result_code = nil
 time_taken = nil
 time_ran = nil
+url = nil
+id = nil
 result_codes = Hash.new
 
 # Map Site Confidence result codes to Nagios exit codes and definitions
@@ -95,7 +97,7 @@ end
 
 opts.each do |opt, arg|
   case opt
-  when '--help'
+    when '--help'
       puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
       exit 0
     when '--username'
@@ -122,7 +124,7 @@ api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{user
 
 account_id = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Format/JSON")["Response"]["Account"]["AccountId"]
 
-json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
+json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CId%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CId%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
 
 # Iterate through the different user journeys until we find the label
 user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
@@ -132,6 +134,8 @@ user_journeys.each do |user_journey|
    result_code = user_journey["ResultCode"]
    time_taken = user_journey["LastTestDownloadSpeed"]
    time_ran = user_journey["LastTestLocalTimestamp"]
+   id = user_journey["Id"].split("J").last
+   url = "https://portal.siteconfidence.co.uk/mon/report/script/script.php?st=0&sid=#{id}"
    break
   end
 end
@@ -144,6 +148,8 @@ pages.each do |page|
    result_code = page["ResultCode"]
    time_taken = page["LastTestDownloadSpeed"]
    time_ran = page["LastTestLocalTimestamp"]
+   id = page["Id"].split("G").last
+   url = "https://portal.siteconfidence.co.uk/mon/report/page/page.php?id=#{id}"
    break
   end
 end
@@ -155,14 +161,18 @@ time_ran = Time.at(time_ran).strftime("%T")
 case exit_code
   when 0
     puts "OK: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "#{url}"
     exit exit_code
   when 1
     puts "WARNING: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "#{url}"
     exit exit_code
   when 2
     puts "CRITICAL: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "#{url}"
     exit exit_code
   when 3
     puts "UNKNOWN: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "#{url}"
     exit exit_code
 end
