@@ -5,6 +5,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'getoptlong'
+require 'openssl'
 
 opts = GetoptLong.new(
   [ '--username', GetoptLong::REQUIRED_ARGUMENT ],
