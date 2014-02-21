@@ -123,7 +123,17 @@ end
 
 api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{username}/password/#{password}/Format/JSON/")["Response"]["ApiKey"]["Value"]
 
+unless api_key =~ /^[0-9a-f]+$/
+  puts "Failed to get valid API key from Site Confidence"
+  exit 2
+end
+
 account_id = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Format/JSON")["Response"]["Account"]["AccountId"]
+
+unless account_id =~ /^[0-9A-Z]+$/
+  puts "Failed to get valid account ID from Site Confidence"
+  exit 2
+end
 
 json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CId%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CId%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
 
