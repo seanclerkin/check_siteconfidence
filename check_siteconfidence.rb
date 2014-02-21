@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
-require "rubygems"
-require "net/http"
-require "uri"
-require "json"
+require 'rubygems'
+require 'net/http'
+require 'uri'
+require 'json'
 require 'getoptlong'
 
 opts = GetoptLong.new(
@@ -89,14 +89,14 @@ result_codes = { "0"   => [0, "Test in progress"],
                 }
 
 unless ARGV.count > 0
-  puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label>"
+  puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
   exit 3
 end
 
 opts.each do |opt, arg|
   case opt
   when '--help'
-      puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the test to check>"
+      puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
       exit 0
     when '--username'
       username = arg
@@ -122,8 +122,9 @@ api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{user
 
 account_id = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Format/JSON")["Response"]["Account"]["AccountId"]
 
-json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BUserJourneys%5BUserJourney%5BId%2CLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CCurrentStatus%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/ScriptType/0/Format/JSON/")
+json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CLastTestGmtTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
 
+# Iterate through the different user journeys until we find the label
 user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
 
 user_journeys.each do |user_journey|
@@ -131,20 +132,34 @@ user_journeys.each do |user_journey|
    result_code = user_journey["ResultCode"]
    time_taken = user_journey["LastTestDownloadSpeed"]
    time_ran = user_journey["LastTestGmtTimestamp"]
+   break
+  end
+end
+
+# Iterate through the different pages until we find the label
+pages = json["Response"]["Account"]["Pages"]["Page"]
+
+pages.each do |page|
+  if label == page["Label"]
+   result_code = page["ResultCode"]
+   time_taken = page["LastTestDownloadSpeed"]
+   time_ran = page["LastTestGmtTimestamp"]
+   break
   end
 end
 
 exit_code = result_codes[result_code][0]
 result_string = result_codes[result_code][1]
+time_ran = Time.at(time_ran).strftime("%T")
 
 case exit_code
   when 0
-    puts "OK: Test of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "OK: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
     exit exit_code
   when 1
-    puts "WARNING: Test of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "WARNING: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
     exit exit_code
   when 2
-    puts "CRITICAL: Test of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
+    puts "CRITICAL: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
     exit exit_code
 end
