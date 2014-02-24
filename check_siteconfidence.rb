@@ -143,7 +143,7 @@ sleep 1
 
 json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BId%2CLabel%2CLastTestDownloadSpeed%2CLastTestLocalTimestamp%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BId%2CLabel%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%2CSteps%5BStep%5BId%2CNumber%2CUrl%2CLabel%2CResultCode%2CLastTestDownloadSpeed%5D%5D%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
 
-# Iterate through the different user journeys until we find the label user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
+# Iterate through the different user journeys until we find the label
 user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
 user_journeys.each do |user_journey|
   if label == user_journey["Label"]
@@ -172,7 +172,7 @@ user_journeys.each do |user_journey|
   end
 end
 
-# Iterate through the different pages until we find the label pages = json["Response"]["Account"]["Pages"]["Page"]
+# Iterate through the different pages until we find the label
 pages = json["Response"]["Account"]["Pages"]["Page"]
 pages.each do |page|
   if label == page["Label"]
