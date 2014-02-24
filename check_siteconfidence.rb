@@ -159,6 +159,9 @@ user_journeys.each do |user_journey|
        step_number.prepend("0")
      end
      step_label = step["Label"]
+     unless step_label.length > 1
+       step_label = step["Url"]
+     end
      step_time_taken = step["LastTestDownloadSpeed"]
      step_result_code = step["ResultCode"]
      step_result_string = result_codes[result_code][1]
