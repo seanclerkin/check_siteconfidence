@@ -12,16 +12,36 @@ opts = GetoptLong.new(
   [ '--password', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--label', GetoptLong::REQUIRED_ARGUMENT ],
 )
-
 username = nil
 password = nil
 label = nil
 result_code = nil
-time_taken = nil
+total_time_taken = nil
 time_ran = nil
 url = nil
 id = nil
+step_results = []
+step_perfdata = []
 result_codes = Hash.new
+
+unless ARGV.count > 0
+  puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
+  exit 3
+end
+
+opts.each do |opt, arg|
+  case opt
+  when '--help'
+    puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
+    exit 0
+  when '--username'
+    username = arg
+  when '--password'
+    password = arg
+  when '--label'
+    label = arg
+  end
+end
 
 # Map Site Confidence result codes to Nagios exit codes and definitions
 result_codes = { "0"   => [0, "Test in progress"],
@@ -91,25 +111,6 @@ result_codes = { "0"   => [0, "Test in progress"],
                  "271" => [2, "Specified Phrase Found"],
                 }
 
-unless ARGV.count > 0
-  puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
-  exit 3
-end
-
-opts.each do |opt, arg|
-  case opt
-    when '--help'
-      puts "Usage: check_siteconfidence.rb --username <username> --password <password> --label <label of the user jouney/page to check>"
-      exit 0
-    when '--username'
-      username = arg
-    when '--password'
-      password = arg
-    when '--label'
-      label = arg
-  end
-end
-
 def request_json(url)
   uri = URI.parse(url)
   https = Net::HTTP.new(uri.host, uri.port)
@@ -118,7 +119,8 @@ def request_json(url)
   request = Net::HTTP::Get.new(uri.request_uri)
   response = https.request(request)
   json = JSON.parse(response.body)
-  return json
+
+  json
 end
 
 api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{username}/password/#{password}/Format/JSON/")["Response"]["ApiKey"]["Value"]
@@ -128,6 +130,8 @@ unless api_key =~ /^[0-9a-f]+$/
   exit 2
 end
 
+sleep 1
+
 account_id = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Format/JSON")["Response"]["Account"]["AccountId"]
 
 unless account_id =~ /^[0-9A-Z]+$/
@@ -135,29 +139,42 @@ unless account_id =~ /^[0-9A-Z]+$/
   exit 2
 end
 
-json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BLabel%2CId%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BLabel%2CId%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
+sleep 1
 
-# Iterate through the different user journeys until we find the label
+json = request_json("https://api.siteconfidence.co.uk/current/#{api_key}/Return/%5BAccount%5BPages%5BPage%5BId%2CLabel%2CLastTestDownloadSpeed%2CLastTestLocalTimestamp%2CResultCode%5D%5D%2CUserJourneys%5BUserJourney%5BId%2CLabel%2CLastTestLocalTimestamp%2CLastTestDownloadSpeed%2CResultCode%2CSteps%5BStep%5BId%2CNumber%2CUrl%2CLabel%2CResultCode%2CLastTestDownloadSpeed%5D%5D%5D%5D%5D%5D/AccountId/#{account_id}/Format/JSON/")
+
+# Iterate through the different user journeys until we find the label user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
 user_journeys = json["Response"]["Account"]["UserJourneys"]["UserJourney"]
-
 user_journeys.each do |user_journey|
   if label == user_journey["Label"]
    result_code = user_journey["ResultCode"]
-   time_taken = user_journey["LastTestDownloadSpeed"]
+   total_time_taken = user_journey["LastTestDownloadSpeed"]
    time_ran = user_journey["LastTestLocalTimestamp"]
    id = user_journey["Id"].split("J").last
    url = "https://portal.siteconfidence.co.uk/mon/report/script/script.php?st=0&sid=#{id}"
+   steps = user_journey["Steps"]["Step"]
+   steps.each do |step|
+     step_number = step["Number"]
+     unless step_number.length > 1
+       step_number.prepend("0")
+     end
+     step_label = step["Label"]
+     step_time_taken = step["LastTestDownloadSpeed"]
+     step_result_code = step["ResultCode"]
+     step_result_string = result_codes[result_code][1]
+     step_results.push("Step #{step_number}: #{step_result_string} - #{step_label} - #{step_time_taken}s") 
+     step_perfdata.push("step#{step_number}=#{step_time_taken}") 
+   end
    break
   end
 end
 
-# Iterate through the different pages until we find the label
+# Iterate through the different pages until we find the label pages = json["Response"]["Account"]["Pages"]["Page"]
 pages = json["Response"]["Account"]["Pages"]["Page"]
-
 pages.each do |page|
   if label == page["Label"]
    result_code = page["ResultCode"]
-   time_taken = page["LastTestDownloadSpeed"]
+   total_time_taken = page["LastTestDownloadSpeed"]
    time_ran = page["LastTestLocalTimestamp"]
    id = page["Id"].split("G").last
    url = "https://portal.siteconfidence.co.uk/mon/report/page/page.php?id=#{id}"
@@ -165,25 +182,24 @@ pages.each do |page|
   end
 end
 
+unless result_code
+  puts "Couldn't find #{label} in Site Confidence"
+  exit 2
+end
+
 exit_code = result_codes[result_code][0]
 result_string = result_codes[result_code][1]
 time_ran = Time.at(time_ran).strftime("%T")
 
 case exit_code
-  when 0
-    puts "OK: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
-    puts "#{url}"
-    exit exit_code
-  when 1
-    puts "WARNING: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
-    puts "#{url}"
-    exit exit_code
-  when 2
-    puts "CRITICAL: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
-    puts "#{url}"
-    exit exit_code
-  when 3
-    puts "UNKNOWN: Test at #{time_ran} of #{label} took #{time_taken}s, result code #{result_code} - #{result_string} | time_taken=#{time_taken}"
-    puts "#{url}"
-    exit exit_code
+when 0 then nagios_status = "OK"
+when 1 then nagios_status = "WARNING"
+when 2 then nagios_status = "CRITICAL"
+when 3 then nagios_status = "UNKNOWN"
 end
+
+print "#{nagios_status}: #{result_string} - Test at #{time_ran} of #{label} took #{total_time_taken}s, result code #{result_code} | total=#{total_time_taken} "
+puts step_perfdata.sort.join(" ")
+puts step_results.sort.join("\n")
+puts url
+exit exit_code
