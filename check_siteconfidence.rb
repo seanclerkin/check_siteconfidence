@@ -164,7 +164,7 @@ user_journeys.each do |user_journey|
      end
      step_time_taken = step["LastTestDownloadSpeed"]
      step_result_code = step["ResultCode"]
-     step_result_string = result_codes[result_code][1]
+     step_result_string = result_codes[step_result_code][1]
      step_results.push("Step #{step_number}: #{step_result_string} - #{step_label} - #{step_time_taken}s") 
      step_perfdata.push("step#{step_number}=#{step_time_taken}") 
    end
