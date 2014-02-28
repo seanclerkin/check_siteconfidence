@@ -123,7 +123,18 @@ def request_json(url)
   json
 end
 
-api_key = request_json("https://api.siteconfidence.co.uk/current/username/#{username}/password/#{password}/Format/JSON/")["Response"]["ApiKey"]["Value"]
+api_key_response = request_json("https://api.siteconfidence.co.uk/current/username/#{username}/password/#{password}/Format/JSON/")
+
+api_response_code = api_key_response["Response"]["Code"]
+
+# Check if we've hit the monthly api request limit
+case api_response_code
+when 402
+  puts api_key_response["Response"]["Message"]
+  exit 1
+end
+
+api_key = api_key_response["Response"]["ApiKey"]["Value"]
 
 unless api_key =~ /^[0-9a-f]+$/
   puts "Failed to get valid API key from Site Confidence"
