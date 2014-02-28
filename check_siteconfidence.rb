@@ -128,9 +128,7 @@ api_key_response = request_json("https://api.siteconfidence.co.uk/current/userna
 api_response_code = api_key_response["Response"]["Code"]
 
 # If we don't get a 200 response, exit
-case api_response_code
-when 200 then true
-else
+unless api_response_code == 200
   puts api_key_response["Response"]["Message"]
   exit 1
 end
