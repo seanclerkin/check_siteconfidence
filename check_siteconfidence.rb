@@ -127,9 +127,10 @@ api_key_response = request_json("https://api.siteconfidence.co.uk/current/userna
 
 api_response_code = api_key_response["Response"]["Code"]
 
-# Check if we've hit the monthly api request limit
+# If we don't get a 200 response, exit
 case api_response_code
-when 402
+when 200 then true
+else
   puts api_key_response["Response"]["Message"]
   exit 1
 end
